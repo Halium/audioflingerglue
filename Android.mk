@@ -1,5 +1,7 @@
 LOCAL_PATH:= $(call my-dir)
 
+MINIAF_32 := $(shell cat frameworks/av/media/mediaserver/Android.mk |grep "LOCAL_32_BIT_ONLY[[:space:]]*:=[[:space:]]*" |grep -o "true\|1\|false\|0")
+
 ANDROID_MAJOR :=
 ANDROID_MINOR :=
 ANDROID_MICRO :=
@@ -46,7 +48,12 @@ LOCAL_SHARED_LIBRARIES := libc \
                           libmedia \
                           libserviceutility
 endif
-LOCAL_CPPFLAGS=-DANDROID_MAJOR=$(ANDROID_MAJOR) -DANDROID_MINOR=$(ANDROID_MINOR) -DANDROID_MICRO=$(ANDROID_MICRO)
+
+ifeq ($(ANDROID_MAJOR),$(filter $(ANDROID_MAJOR),8 9))
+LOCAL_SHARED_LIBRARIES +=  liblog
+endif
+
+LOCAL_CPPFLAGS :=-DANDROID_MAJOR=$(ANDROID_MAJOR) -DANDROID_MINOR=$(ANDROID_MINOR) -DANDROID_MICRO=$(ANDROID_MICRO) -Wno-unused-parameter
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libaudioflingerglue
 include $(BUILD_SHARED_LIBRARY)
@@ -59,10 +66,27 @@ LOCAL_SHARED_LIBRARIES := libutils \
                           libaudioutils \
                           libmedia \
                           libhardware
+
+ifeq ($(ANDROID_MAJOR),$(filter $(ANDROID_MAJOR),8 9))
+LOCAL_SHARED_LIBRARIES += libaudioclient \
+                          liblog
+endif
+
 LOCAL_MODULE_TAGS := optional
-LOCAL_CPPFLAGS := -DANDROID_MAJOR=$(ANDROID_MAJOR) -DANDROID_MINOR=$(ANDROID_MINOR) -DANDROID_MICRO=$(ANDROID_MICRO)
+LOCAL_CPPFLAGS := -DANDROID_MAJOR=$(ANDROID_MAJOR) -DANDROID_MINOR=$(ANDROID_MINOR) -DANDROID_MICRO=$(ANDROID_MICRO) -Wno-unused-parameter
 ifneq ($(CM_BUILD),)
 LOCAL_CPPFLAGS += -DCM_BUILD
 endif
+ifneq ($(shell cat frameworks/av/include/media/AudioSystem.h |grep SetACFPreviewParameter),)
+LOCAL_CPPFLAGS += -DUSE_SERVICES_VENDOR_EXTENSION
+endif
 LOCAL_MODULE := miniafservice
+ifeq ($(strip $(MINIAF_32)), true)
+LOCAL_32_BIT_ONLY := true
+endif
+
+ifeq ($(ANDROID_MAJOR),$(filter $(ANDROID_MAJOR),7 8 9))
+LOCAL_INIT_RC := miniaf.rc
+endif
+
 include $(BUILD_EXECUTABLE)

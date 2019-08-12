@@ -1,0 +1,5 @@
+service miniaf /system/bin/miniafservice
+    class main
+    user system
+    group audio
+
